@@ -48,9 +48,14 @@ LONDON = ZoneInfo("Europe/London")
 VENUES = [
     {"name": "Score (Leyton)", "system": "better", "slug": "score-leisure-centre",
      "activities": ["basketball-full-60min", "basketball-half-60min"]},
+    {"name": "Walthamstow Leisure Centre", "system": "better",
+     "slug": "walthamstow-leisure-centre",
+     "activities": ["basketball-single-court-60min",    # £12.55/hour
+                    "basketball-single-court-40min"]},  # £17.35 per 40 min
     {"name": "Feel Good Centre (Walthamstow)", "system": "better",
      "slug": "waltham-forest-feel-good-centre",
-     "activities": ["basketball-half-60min"]},          # £25.10/hour
+     "activities": ["basketball-half-60min",            # £25.10/hour
+                    "basketball-half-40min"]},          # £34.70 per 40 min
     {"name": "Barking Sporthouse", "system": "better", "slug": "barking-sporthouse-and-gym",
      "activities": ["basketball-single-court-60min",
                     "basketball-single-court-40min"]},  # £25 per 40 min

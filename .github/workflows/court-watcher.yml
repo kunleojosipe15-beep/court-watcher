@@ -1,0 +1,64 @@
+name: Court watcher
+
+on:
+  schedule:
+    # Regular check every 2 hours overnight/morning (catches cancellations)
+    - cron: "10 0-12/2 * * *"
+    # Hourly runs 14:48-21:48 UTC cover the release times in both winter (GMT)
+    # and summer (BST): Battersea at 16:00-19:00 and Better at 22:00 London.
+    # Near a release the script stays and polls through it; otherwise it
+    # checks once and exits.
+    - cron: "48 14-21 * * *"
+  workflow_dispatch: {}   # "Run workflow" button for manual runs
+
+permissions:
+  contents: write   # to save watcher_state.json (so a day isn't booked twice)
+
+concurrency:
+  group: court-watcher
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Playwright + Chromium
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Check for courts
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          BETTER_EMAIL: ${{ secrets.BETTER_EMAIL }}
+          BETTER_PASSWORD: ${{ secrets.BETTER_PASSWORD }}
+          HEADLESS: "1"
+        run: python court_watcher.py --cloud
+
+      - name: Save state
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain watcher_state.json)" ]; then
+            git config user.name "court-watcher"
+            git config user.email "court-watcher@users.noreply.github.com"
+            git add watcher_state.json
+            git commit -m "Update watcher state"
+            git pull --rebase && git push
+          fi
+
+      - name: Keep screenshots for debugging
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: "*.png"
+          if-no-files-found: ignore
+          retention-days: 7

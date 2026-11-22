@@ -35,6 +35,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -207,10 +208,14 @@ def better_slot_url(venue_slug, slot):
 
 def scan_better(venue, dates):
     """Yield normalised blocks for one Better venue."""
+    # Fetch every (date, activity) in parallel - matters during the 10pm race
+    jobs = [(d, a) for d in dates for a in venue["activities"]]
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {job: ex.submit(better_slots, venue["slug"], job[1], job[0]) for job in jobs}
     for date in dates:
         for act in venue["activities"]:
             try:
-                slots = better_slots(venue["slug"], act, date)
+                slots = futures[(date, act)].result()
             except Exception as e:
                 log(f"  error reading {venue['name']} {act} {date}: {e}")
                 continue
@@ -312,8 +317,9 @@ def scan_places(venue, dates):
 
 
 # ----------------------------- scanning ------------------------------------
-def scan():
-    """Return the best block per date across all venues (venue order = priority)."""
+def scan(systems=None):
+    """Return the best block per date across all venues (venue order = priority).
+    systems: optional set like {"better"} to only check those booking systems."""
     today = now_london().date()
 
     def dates(n):
@@ -322,7 +328,9 @@ def scan():
 
     best = {}
     for venue in VENUES:
-        scanner = scan_better if venue["system"] == "better" else scan_places
+        if systems and venue["system"] not in systems:
+            continue
+        scanner =scan_better if venue["system"] == "better" else scan_places
         n = BETTER_DAYS_AHEAD if venue["system"] == "better" else PLACES_DAYS_AHEAD
         try:
             for blk in scanner(venue, dates(n)):
@@ -477,9 +485,9 @@ def handle_match(blk):
               f"{desc}\n({reason}) Tap to book.", blk["book_url"], links)
 
 
-def run_once(dry_run=False):
+def run_once(dry_run=False, systems=None):
     state = load_state()
-    found = scan()
+    found = scan(systems)
     if not found:
         log(f"No {HOURS}h block between {WINDOW_START} and {WINDOW_END} at any venue.")
         return
@@ -531,6 +539,15 @@ def seconds_until_next_poll():
     return max(1, (nxt - t).total_seconds())
 
 
+def burst_systems(release):
+    """Which booking systems to poll during a release burst. At Better's 10pm
+    release only Better is checked: Battersea releases nothing then, and its
+    pages are slow to load, which would slow down the race for Better slots."""
+    if release is not None and f"{release:%H:%M}" == BETTER_RELEASE:
+        return {"better"}
+    return None
+
+
 def run_cloud():
     """One GitHub Actions run. If a release is coming up within 25 minutes
     (or just happened), stay and poll through it; otherwise check once."""
@@ -541,12 +558,14 @@ def run_cloud():
         run_once()
         return
     end = upcoming + dt.timedelta(minutes=8)
-    log(f"Release at {upcoming:%H:%M}: polling until {end:%H:%M}")
-    run_once()
+    systems = burst_systems(upcoming)
+    log(f"Release at {upcoming:%H:%M}: polling until {end:%H:%M}"
+        + (f" ({', '.join(sorted(systems))} only)" if systems else ""))
+    run_once()   # one full check first
     while now_london() < end:
         time.sleep(20 if current_burst(now_london()) else 60)
         try:
-            run_once()
+            run_once(systems=systems)
         except Exception as e:
             log(f"error: {e}")
 
@@ -590,7 +609,7 @@ def main():
         f"{WINDOW_START}-{WINDOW_END}. Ctrl+C to stop.")
     while True:
         try:
-            run_once()
+            run_once(systems=burst_systems(current_burst(now_london())))
         except Exception as e:
             log(f"error: {e}")
         time.sleep(seconds_until_next_poll())

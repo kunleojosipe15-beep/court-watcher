@@ -5,6 +5,7 @@ Watches London venues for **2 back-to-back hours of basketball court time betwee
 | Venue (priority order) | Booking system | Price / hour | When it finds a block |
 |---|---|---|---|
 | Score (Leyton) | Better | £50.20 | phone alert + **adds to your basket** |
+| Walthamstow Leisure Centre | Better | £17.35 per 40 min (single court) | phone alert + **adds to your basket** |
 | Feel Good Centre (Walthamstow) | Better | £25.10 (half court) | phone alert + **adds to your basket** |
 | Barking Sporthouse | Better | £25 per 40 min (single court) | phone alert + **adds to your basket** |
 | Battersea Sports Centre | Places Leisure | see site | phone alert + link (you book) |
@@ -57,7 +58,8 @@ Repo → **Actions → Court watcher → Run workflow**, then open the run to se
 
 - `VENUES`: reorder to change priority, or delete or comment out venues.
 - `WINDOW_START` / `WINDOW_END`, `HOURS`: your time rule.
-- `WEEKDAYS`: e.g. `{1, 3}` for Tuesdays and Thursdays only.
+- `WEEKDAYS`: currently `{5, 6}` (Saturdays and Sundays). E.g. `{1, 3}` for Tuesdays and Thursdays.
+- `MAX_PER_WEEK`: currently 2 bookings per week (Mon–Sun). `None` for no limit.
 - `SAME_COURT_ONLY`: set to `False` to accept two different courts.
 - `AUTO_BASKET`: set to `False` for phone alerts only.
 

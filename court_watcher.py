@@ -79,7 +79,8 @@ VENUES = [
 WINDOW_START = "16:00"      # earliest start
 WINDOW_END = "21:00"        # latest finish
 HOURS = 2                   # consecutive 60-minute slots
-WEEKDAYS = {0, 1, 2, 3, 4, 5, 6}   # 0=Mon … 6=Sun; e.g. {1, 3} for Tue & Thu
+WEEKDAYS = {5, 6}           # 0=Mon … 6=Sun; currently Saturdays & Sundays
+MAX_PER_WEEK = 2            # at most this many blocks per week (Mon-Sun); None = no limit
 SAME_COURT_ONLY = True      # False = accept two different courts if needed
 AUTO_BASKET = True          # False = phone alert only
 POLL_MINUTES = 10           # normal polling interval in --loop
@@ -501,6 +502,15 @@ def handle_match(blk):
               f"{desc}\n({reason}) Tap to book.", blk["book_url"], links)
 
 
+def week_count(state, date):
+    """How many handled dates fall in the same Mon-Sun week as `date`
+    (only counting days you currently watch)."""
+    wk = dt.date.fromisoformat(date).isocalendar()[:2]
+    return sum(1 for d in state["basketed"]
+               if dt.date.fromisoformat(d).isocalendar()[:2] == wk
+               and dt.date.fromisoformat(d).weekday() in WEEKDAYS)
+
+
 def run_once(dry_run=False, systems=None):
     state = load_state()
     found = scan(systems)
@@ -513,6 +523,9 @@ def run_once(dry_run=False, systems=None):
             continue
         if blk["date"] in state["basketed"]:
             log(f"Already handled {blk['date']}; skipping ({describe(blk)})")
+            continue
+        if MAX_PER_WEEK is not None and week_count(state, blk["date"]) >= MAX_PER_WEEK:
+            log(f"Already have {MAX_PER_WEEK} this week; skipping ({describe(blk)})")
             continue
         handle_match(blk)
         state["basketed"].append(blk["date"])

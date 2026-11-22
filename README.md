@@ -5,6 +5,8 @@ Watches London venues for **2 back-to-back hours of basketball court time betwee
 | Venue (priority order) | Booking system | Price / hour | When it finds a block |
 |---|---|---|---|
 | Score (Leyton) | Better | £50.20 | phone alert + **adds to your basket** |
+| Feel Good Centre (Walthamstow) | Better | £25.10 (half court) | phone alert + **adds to your basket** |
+| Barking Sporthouse | Better | £25 per 40 min (single court) | phone alert + **adds to your basket** |
 | Battersea Sports Centre | Places Leisure | see site | phone alert + link (you book) |
 | Crystal Palace National Sports Centre | Better | £45.00 | phone alert + **adds to your basket** |
 | Phoenix (White City) | Better | £52.20 | phone alert + **adds to your basket** |

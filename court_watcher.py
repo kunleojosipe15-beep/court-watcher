@@ -48,6 +48,12 @@ LONDON = ZoneInfo("Europe/London")
 VENUES = [
     {"name": "Score (Leyton)", "system": "better", "slug": "score-leisure-centre",
      "activities": ["basketball-full-60min", "basketball-half-60min"]},
+    {"name": "Feel Good Centre (Walthamstow)", "system": "better",
+     "slug": "waltham-forest-feel-good-centre",
+     "activities": ["basketball-half-60min"]},          # £25.10/hour
+    {"name": "Barking Sporthouse", "system": "better", "slug": "barking-sporthouse-and-gym",
+     "activities": ["basketball-single-court-60min",
+                    "basketball-single-court-40min"]},  # £25 per 40 min
     {"name": "Battersea Sports Centre", "system": "places", "site": "229",
      "activities": {"229A001305": "Full court",
                     "229A001306": "Half court (1-2)",
@@ -183,12 +189,16 @@ def chain_blocks(by_start, end_of, loc_of):
     blocks = []
     for start in sorted(by_start):
         chain = [start]
-        for _ in range(HOURS - 1):
-            nxt = end_of(by_start[chain[-1]][0])
-            if nxt not in by_start:
+        # Keep adding back-to-back slots until they cover HOURS
+        # (two 60-min slots, or three 40-min slots, etc.)
+        total = 0
+        while True:
+            end = end_of(by_start[chain[-1]][0])
+            total += hm_to_min(end) - hm_to_min(chain[-1])
+            if total >= HOURS * 60 or end not in by_start:
                 break
-            chain.append(nxt)
-        if len(chain) != HOURS:
+            chain.append(end)
+        if total < HOURS * 60:
             continue
         loc_sets = [{loc_of(s): s for s in by_start[t]} for t in chain]
         common = set(loc_sets[0]).intersection(*loc_sets[1:])
@@ -231,7 +241,8 @@ def scan_better(venue, dates):
                 yield {
                     "venue": venue["name"], "system": "better", "slug": venue["slug"],
                     "date": date, "start": bhm(b[0])[0], "end": bhm(b[-1])[1],
-                    "kind": "Full court" if "full" in act else "Half court",
+                    "kind": ("Full court" if "full" in act else
+                             "Single court" if "single" in act else "Half court"),
                     "court": b[0]["location"]["name"].split(",")[0],
                     "price": sum((s.get("price") or {}).get("raw") or 0 for s in b) / 100,
                     "book_url": better_slot_url(venue["slug"], b[0]),
